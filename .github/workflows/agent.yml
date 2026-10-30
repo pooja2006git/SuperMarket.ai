@@ -1,0 +1,36 @@
+name: FreshMart Stock Agent
+
+on:
+  schedule:
+    - cron: '0 */5 * * *'    # every 5 hours (stock check)
+    - cron: '30 2 * * *'     # 8am IST daily (2:30am UTC = 8am IST)
+  workflow_dispatch:          # lets you trigger it manually from GitHub too
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run stock check or daily summary
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          STAFF_EMAIL: ${{ secrets.STAFF_EMAIL }}
+        run: |
+          if [ "${{ github.event.schedule }}" = "30 2 * * *" ]; then
+            python backend/agent.py daily_summary
+          else
+            python backend/agent.py check_stock
+          fi
